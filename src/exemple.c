@@ -26,73 +26,80 @@ int yGradient[3][3] = {
 };
 
 int SEUIL = 40;
+int NB_IMAGE = 870;
 
 byte **dilatation(byte **m,long nrl,long nrh,long ncl,long nch);
 byte **erosion(byte **m,long nrl,long nrh,long ncl,long nch);
 byte **RGB_B(rgb8 **m,long nrl,long nrh,long ncl,long nch);
 
-/**byte passeBas(rgb8 **m,int i,int j){
-	int ligne,colonne,compteur_l,compteur_c;
-	int tempx = 0;
-	int tempy = 0;
-	int magnitude;
-	compteur_c = 0;
-	compteur_l = 0;
-	for(ligne = i-1;ligne<=i+1;ligne++){
-		for(colonne = j-1;colonne<=j+1;colonne++){
-			tempx = tempx + xGradient[compteur_c][compteur_l] * m[ligne][colonne].r;
-			tempy = tempy + yGradient[compteur_c][compteur_l] * m[ligne][colonne].r;
-			if(compteur_c == 2){
-				compteur_c = 0;
-				compteur_l++;
-			}
-			else{
-				
-				compteur_c++;
-			}
-		}
-	}
-	if(tempx < 0){
-		tempx = 0;
-	}
-	if(tempy < 0){
-		tempy = 0;
-	}
 
-	magnitude = sqrt(tempx*tempx + tempy*tempy);	
-	if(magnitude < SEUIL){
-		magnitude = 0;
-	}
-	else{
-		magnitude = 255;
-	}
-	printf("temp = %d && matrice = %d ; i = %d && j = %d\n",magnitude,m[i][j],i,j);
-	return (byte)(magnitude);
-}		
-
-
-void convolution(rgb8 **m,long nrl,long nrh,long ncl,long nch){
-	byte **matrice_convo;
-	matrice_convo = bmatrix(nrl,nrh,ncl,nch);
-
-	long i,j;
-	for(i = nrl;i < nrh;i++){
-		for(j = ncl;j < nch;j++){
-			if((i == 0)||(j == 0)||(i == nrh-1)||(j == nch - 1)){
-				matrice_convo[i][j] = 128;
-
-			}
-			else{
-				matrice_convo[i][j] = passeBas(m,i,j);
-			}
-		}
-	}
-	SavePGM_bmatrix(matrice_convo,nrl,nrh,ncl,nch,"Seuil.pgm");
-	free_bmatrix(matrice_convo,nrl,nrh,ncl,nch);
-}
-
+/**
+* Fonction permettant de définir une image de fond - b (Filtre median)
 */
 
+
+/**
+* Fonction permettant de définir une image de fond - a (Moyenne glissante)
+*/
+void Exercice5_a(char *path,char *imagename,char *pathfinal,char *pathFirstImage){
+    byte **matrice_temp;
+    byte **matrice_difference;
+    rgb8 **I;
+    long nrh,nrl,nch,ncl;
+ 
+    I=LoadPPM_rgb8matrix(pathFirstImage,&nrl,&nrh,&ncl,&nch);
+    
+    matrice_difference = bmatrix(nrl,nrh,ncl,nch);
+    matrice_difference = RGB_B(I,nrl,nrh,ncl,nch);    
+
+    rgb8 **R;
+    int i,j,k;
+    char str[50] = "\0";
+    char num[4];
+    char dest[50] = "\0";
+    for(i = 1;i < NB_IMAGE; i++){
+        // On obtient le bon nom du fichier pour i :
+        memset (str, 0, sizeof (str));
+        strcat(str,path);
+        strcat(str,imagename);
+        if(i < 10){
+            strcat(str,"00");
+        }
+        else if((i < 100)&&(i>=10)){
+            strcat(str,"0");
+        }
+
+        snprintf(num, 4, "%d", i);
+
+        strcat(str,num);
+        strcat(str,".ppm");
+
+        // On fait l'algorithme
+        
+        R=LoadPPM_rgb8matrix(str,&nrl,&nrh,&ncl,&nch);
+
+        matrice_temp = bmatrix(nrl,nrh,ncl,nch);
+
+        matrice_temp = RGB_B(R,nrl,nrh,ncl,nch);
+
+        //On fait la moyenne glissante
+        for(j = nrl;j < nrh;j++){
+		    for(k = ncl;k < nch;k++){
+                matrice_difference[j][k] = (matrice_temp[j][k] + matrice_difference[j][k])/2;
+            }
+        }
+        
+    }
+
+    //On envoie dans un dossier
+    memset (dest, 0, sizeof (dest));
+    strcat(dest,pathfinal);
+    strcat(dest,"moyenne_glissante");
+    strcat(dest,num);
+    strcat(dest,".ppm");    
+    SavePGM_bmatrix(matrice_difference,nrl,nrh,ncl,nch,dest);
+    
+}
 
 /**
 * Fonction permettant de détecter le mouvement par différence d’images consécutives en fonction d'un nom
@@ -172,7 +179,7 @@ void Exercice4(char *path,char *imagename,char *pathfinal){
         strcat(dest,num);
         strcat(dest,".ppm");    
         SavePGM_bmatrix(matrice_difference,nrl,nrh,ncl,nch,dest);
-        //printf("path %s\n = ",str_next);
+        printf("path %s\n = ",str_next);
            
     }
 }
@@ -305,7 +312,8 @@ int main(void){
 
 	//R = ouverture(R,nrl,nrh,ncl,nch,10);
     
-    Exercice4("Sequences/Fomd/ppm/\0","fomd\0","Sequences/Fomd/imgdone/");
+    //Exercice4("Sequences/Fomd/ppm/\0","fomd\0","Sequences/Fomd/imgdone/");
+    Exercice5_a("Sequences/Lbox/ppm/\0","lbox\0","Sequences/Lbox/","Sequences/Lbox/ppm/lbox001.ppm");
     
 	//SavePGM_bmatrix(R,nrl,nrh,ncl,nch,"imgdone/test.pgm");
 
