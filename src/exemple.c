@@ -25,12 +25,15 @@ int yGradient[3][3] = {
                   {1,2,1}
 };
 
-int SEUIL = 40;
+int SEUIL = 35;
 int NB_IMAGE = 870;
 
 byte **dilatation(byte **m,long nrl,long nrh,long ncl,long nch);
 byte **erosion(byte **m,long nrl,long nrh,long ncl,long nch);
 byte **RGB_B(rgb8 **m,long nrl,long nrh,long ncl,long nch);
+byte **ouverture(byte **m,long nrl,long nrh,long ncl,long nch,int iteration);
+byte **binarisation(byte **m,long nrl,long nrh,long ncl,long nch,int seuil);
+byte **fermeture(byte **m,long nrl,long nrh,long ncl,long nch,int iteration);
 
 
 //Fonction initialisant dynamiquement une matrice
@@ -48,6 +51,78 @@ int **InitTab(int taillex,int tailley){
         matrice[i] = malloc ( tailley * sizeof(int *) ); 
     }
     return matrice;
+}
+
+/**
+* Fonction permettant de faire la différence par rapport à une image de fond
+*/
+void Exercice6(char *path,char *imagename,char *pathfinal,char *pathFirstImage){
+    byte **matrice_temp;
+    byte **matrice_fond;
+    byte **matrice_difference;
+    
+
+    rgb8 **R;
+    
+    int i,j,k;
+    long nrh,nrl,nch,ncl;
+
+
+    char str[50] = "\0";
+    char num[4];
+    char dest[50] = "\0";
+    for(i = 1;i < NB_IMAGE; i++){
+        // On obtient le bon nom du fichier pour i :
+        memset (str, 0, sizeof (str));
+        strcat(str,path);
+        strcat(str,imagename);
+        if(i < 10){
+            strcat(str,"00");
+        }
+        else if((i < 100)&&(i>=10)){
+            strcat(str,"0");
+        }
+
+        snprintf(num, 4, "%d", i);
+
+        strcat(str,num);
+        strcat(str,".ppm");
+
+        // On fait l'algorithme
+        
+        R=LoadPPM_rgb8matrix(str,&nrl,&nrh,&ncl,&nch);
+        
+        matrice_fond = bmatrix(nrl,nrh,ncl,nch);
+        matrice_fond=LoadPGM_bmatrix(pathFirstImage,&nrl,&nrh,&ncl,&nch);
+
+        matrice_temp = bmatrix(nrl,nrh,ncl,nch);
+        matrice_difference = bmatrix(nrl,nrh,ncl,nch);
+
+        matrice_temp = RGB_B(R,nrl,nrh,ncl,nch);
+        
+        //On fait la soutraction
+        for(j = nrl;j < nrh;j++){
+		    for(k = ncl;k < nch;k++){
+                matrice_difference[j][k] = (byte)(abs((int)matrice_temp[j][k] - (int)matrice_fond[j][k]));
+            }
+        }
+        
+        //On traite l'image
+        /**
+        matrice_difference = binarisation(matrice_difference,nrl,nrh,ncl,nch,SEUIL);
+        matrice_difference = ouverture(matrice_difference,nrl,nrh,ncl,nch,1);
+        matrice_difference = ouverture(matrice_difference,nrl,nrh,ncl,nch,1);
+        */
+
+        //On envoie dans un dossier
+        memset (dest, 0, sizeof (dest));
+        strcat(dest,pathfinal);
+        strcat(dest,"image_difference");
+        strcat(dest,num);
+        strcat(dest,".pgm");    
+        SavePGM_bmatrix(matrice_difference,nrl,nrh,ncl,nch,dest);
+           
+    }
 }
 
 /**
@@ -77,7 +152,7 @@ void Exercice5_b(char *path,char *imagename,char *pathfinal,char *pathFirstImage
 	for(i = 0;i<nrh*nch;i++){
 		for(j = 0; j < 256;j++){
 			tab[i][j] = 0;
-			printf("i = %d && j = %d \n",i,j);
+			//printf("i = %d && j = %d \n",i,j);
 		}
 	}
 	printf("INITIALISATION DONE \n");
@@ -106,20 +181,25 @@ void Exercice5_b(char *path,char *imagename,char *pathfinal,char *pathFirstImage
         matrice_temp = bmatrix(nrl,nrh,ncl,nch);
 
         matrice_temp = RGB_B(R,nrl,nrh,ncl,nch);
-
+    //printf("Start Moyenne glissante \n");
         //On fait la moyenne glissante
         for(j = nrl;j < nrh;j++){
 		    for(k = ncl;k < nch;k++){
-				tab[i*j][matrice_temp[j][k]]++;
+				tab[j*k][matrice_temp[j][k]]++;
             }
         }
-  
+  		//printf("etape %d \n",i);
+
     }
+    printf("Moyenne glissante done\n");
+    printf("Mediane");
+    int flag = 0;
 	int compteur = 0;
 	int iter_ligne = 0;
 	int iter_colonne = 0;
 	//On fait ensuite la médiane
 	for(i = 0;i<nrh*nch;i++){
+        compteur = 0;
 		iter_colonne++;
 		if(iter_colonne == nch){
 			iter_colonne = 0;
@@ -127,18 +207,21 @@ void Exercice5_b(char *path,char *imagename,char *pathfinal,char *pathFirstImage
 		} 
 		for(j = 0; j < 256;j++){
 			compteur = compteur + tab[i][j];
-			if(compteur > NB_IMAGE/2){
+			if((compteur < NB_IMAGE/2)&&(flag == 0)){
 				matrice_difference[iter_ligne][iter_colonne] = j;
+                printf("i = %d && valeur = %d\n ",i,j);
+                flag = 1;
 			}
 		}
 	}
+    printf("Mediane done");
 
     //On envoie dans un dossier
     memset (dest, 0, sizeof (dest));
     strcat(dest,pathfinal);
     strcat(dest,"mediane");
     strcat(dest,num);
-    strcat(dest,".ppm");    
+    strcat(dest,".pgm");    
     SavePGM_bmatrix(matrice_difference,nrl,nrh,ncl,nch,dest);
     
 }
@@ -202,7 +285,7 @@ void Exercice5_a(char *path,char *imagename,char *pathfinal,char *pathFirstImage
     strcat(dest,pathfinal);
     strcat(dest,"moyenne_glissante");
     strcat(dest,num);
-    strcat(dest,".ppm");    
+    strcat(dest,".pgm");    
     SavePGM_bmatrix(matrice_difference,nrl,nrh,ncl,nch,dest);
     
 }
@@ -418,8 +501,8 @@ int main(void){
 
 	//R = ouverture(R,nrl,nrh,ncl,nch,10);
     
-    //Exercice4("Sequences/Fomd/ppm/\0","fomd\0","Sequences/Fomd/imgdone/");
-    Exercice5_b("Sequences/Lbox/ppm/\0","lbox\0","Sequences/Lbox/","Sequences/Lbox/ppm/lbox001.ppm");
+    Exercice6("Sequences/Lbox/ppm/\0","lbox\0","Sequences/Lbox/imgdone-mediane/","Sequences/Lbox/mediane869.pgm");
+    //Exercice5_b("Sequences/Fomd/ppm/\0","fomd\0","Sequences/Fomd/","Sequences/Fomd/ppm/fomd001.ppm");
     
 	//SavePGM_bmatrix(R,nrl,nrh,ncl,nch,"imgdone/test.pgm");
 
