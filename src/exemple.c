@@ -25,7 +25,7 @@ int yGradient[3][3] = {
                   {1,2,1}
 };
 
-int SEUIL = 35;
+int SEUIL = 30;
 int NB_IMAGE = 870;
 
 byte **dilatation(byte **m,long nrl,long nrh,long ncl,long nch);
@@ -108,11 +108,10 @@ void Exercice6(char *path,char *imagename,char *pathfinal,char *pathFirstImage){
         }
         
         //On traite l'image
-        /**
         matrice_difference = binarisation(matrice_difference,nrl,nrh,ncl,nch,SEUIL);
-        matrice_difference = ouverture(matrice_difference,nrl,nrh,ncl,nch,1);
-        matrice_difference = ouverture(matrice_difference,nrl,nrh,ncl,nch,1);
-        */
+        matrice_difference = ouverture(matrice_difference,nrl,nrh,ncl,nch,2);
+        matrice_difference = fermeture(matrice_difference,nrl,nrh,ncl,nch,5);
+   
 
         //On envoie dans un dossier
         memset (dest, 0, sizeof (dest));
@@ -177,11 +176,10 @@ void Exercice5_b(char *path,char *imagename,char *pathfinal,char *pathFirstImage
         // On fait l'algorithme
         
         R=LoadPPM_rgb8matrix(str,&nrl,&nrh,&ncl,&nch);
-
         matrice_temp = bmatrix(nrl,nrh,ncl,nch);
-
         matrice_temp = RGB_B(R,nrl,nrh,ncl,nch);
-    //printf("Start Moyenne glissante \n");
+
+        //printf("Start Moyenne glissante \n");
         //On fait la moyenne glissante
         for(j = nrl;j < nrh;j++){
 		    for(k = ncl;k < nch;k++){
