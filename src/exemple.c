@@ -25,8 +25,27 @@ int yGradient[3][3] = {
                   {1,2,1}
 };
 
+int Gaussian_filter[3][3] = {
+                  {1,2,1},
+                  {2,4,2},
+                  {1,2,1}
+};
+
+int xCanny[3][3] = {
+                  {-1,0,1},
+                  {-1,0,1},
+                  {-1,0,1}
+};
+
+int yCanny[3][3] = {
+                  {-1,-1,-1},
+                  {0,0,0},
+                  {1,1,1}
+};
+
+
 int SEUIL = 30;
-int NB_IMAGE = 870;
+int NB_IMAGE = 967;
 
 byte **dilatation(byte **m,long nrl,long nrh,long ncl,long nch);
 byte **erosion(byte **m,long nrl,long nrh,long ncl,long nch);
@@ -34,7 +53,6 @@ byte **RGB_B(rgb8 **m,long nrl,long nrh,long ncl,long nch);
 byte **ouverture(byte **m,long nrl,long nrh,long ncl,long nch,int iteration);
 byte **binarisation(byte **m,long nrl,long nrh,long ncl,long nch,int seuil);
 byte **fermeture(byte **m,long nrl,long nrh,long ncl,long nch,int iteration);
-
 
 //Fonction initialisant dynamiquement une matrice
 int **InitTab(int taillex,int tailley){
@@ -52,6 +70,167 @@ int **InitTab(int taillex,int tailley){
     }
     return matrice;
 }
+
+/***  EXERCICE TP2 ***/
+
+    
+
+
+
+
+/***  EXERCICE TP1 ***/
+//Fonction representant la methode de Harris
+void Harris(char *path,char *imagename,char *pathfinal,char *pathFirstImage,int lambda){
+    byte **matrice_temp;
+    byte **matrice_difference;
+    byte **matrice_gaussian;
+    byte **matrice_harris;
+    rgb8 **I;
+    long nrh,nrl,nch,ncl;
+
+
+    I=LoadPPM_rgb8matrix(pathFirstImage,&nrl,&nrh,&ncl,&nch);
+    
+    matrice_difference = bmatrix(nrl,nrh,ncl,nch);
+    matrice_difference = RGB_B(I,nrl,nrh,ncl,nch);    
+
+	int **tab = NULL;
+	tab = InitTab(nrh*nch,256);
+
+    rgb8 **R;
+    int i,j,k;
+    char str[50] = "\0";
+    char num[4];
+    char dest[50] = "\0";
+
+	// On initialise le tableau à 0
+	for(i = 0;i<nrh*nch;i++){
+		for(j = 0; j < 256;j++){
+			tab[i][j] = 0;
+			//printf("i = %d && j = %d \n",i,j);
+		}
+	}
+	printf("INITIALISATION DONE \n");
+
+    for(i = 1;i < NB_IMAGE; i++){
+        // On obtient le bon nom du fichier pour i :
+        memset (str, 0, sizeof (str));
+        strcat(str,path);
+        strcat(str,imagename);
+        if(i < 10){
+            strcat(str,"00");
+        }
+        else if((i < 100)&&(i>=10)){
+            strcat(str,"0");
+        }
+
+        snprintf(num, 4, "%d", i);
+
+        strcat(str,num);
+        strcat(str,".ppm");
+
+        // On fait l'algorithme
+        
+        R=LoadPPM_rgb8matrix(str,&nrl,&nrh,&ncl,&nch);
+        matrice_temp = bmatrix(nrl,nrh,ncl,nch);
+        matrice_temp = RGB_B(R,nrl,nrh,ncl,nch);
+
+        matrice_gaussian = bmatrix(nrl,nrh,ncl,nch);
+        matrice_harris = bmatrix(nrl,nrh,ncl,nch);
+
+        int GradientX = 0;
+        int GradientY = 0;
+        int Gaussian = 0;
+
+        int compteur_c,compteur_l,ligne,colonne;
+        //On fait notre filtre gaussien
+        for(j = nrl;j < nrh;j++){
+		    for(k = ncl;k < nch;k++){
+				if((j == nrl)||(j == nrh - 1) || (k == ncl) || (k == nch - 1)){
+                    matrice_gaussian[j][k] = 128;
+                }
+                else{
+                    compteur_c = 0;
+                    compteur_l = 0;
+
+                    for(ligne = j-1;ligne<=j+1;ligne++){
+                        for(colonne = k-1;colonne<=k+1;colonne++){
+                            Gaussian = Gaussian + matrice_temp[ligne][colonne] * Gaussian_filter[compteur_l][compteur_c];
+     
+                            //On incrémente les compteurs
+                            if(compteur_c ==2){
+                                compteur_c = 0;
+                                compteur_l++;
+                            }  
+                            else{
+                                compteur_c++;
+                            }
+                        }
+                    }
+                    Gaussian = Gaussian/16;
+                    matrice_gaussian[j][k] = Gaussian;
+                    Gaussian = 0;
+                }
+            }
+        }
+        printf("Gaussian done\n");  
+        
+        int temp;
+        //Calcul de gradient à partir de la matrice_gaussian
+        for(j = nrl;j < nrh;j++){
+            for(k = ncl;k < nch;k++){
+                if((j == nrl)||(j == nrh - 1) || (k == ncl) || (k == nch - 1)){
+                    matrice_harris[j][k] = 128;
+                }
+                else{
+                    compteur_c = 0;
+                    compteur_l = 0;
+
+                    for(ligne = j-1;ligne<=j+1;ligne++){
+                        for(colonne = k-1;colonne<=k+1;colonne++){
+                            GradientX = GradientX + matrice_gaussian[ligne][colonne] * xCanny[compteur_l][compteur_c];
+                            GradientY = GradientY + matrice_gaussian[ligne][colonne] * yCanny[compteur_l][compteur_c];
+     
+                            //On incrémente les compteurs
+                            if(compteur_c ==2){
+                                compteur_c = 0;
+                                compteur_l++;
+                            }  
+                            else{
+                                compteur_c++;
+                            }
+                        }
+                    }
+
+                    temp = (GradientX*GradientX)*(GradientY*GradientY) - GradientX*GradientY - lambda*(((GradientX*GradientX)+(GradientY*GradientY))*((GradientX*GradientX)+(GradientY*GradientY)));
+                    if(temp >255){
+                        matrice_harris[j][k] = 255;
+                    }
+                    else{
+                        matrice_harris[j][k] = matrice_temp[j][k];
+                    }
+                    GradientX = 0;
+                    GradientY = 0;
+                }
+            }
+        }
+        printf("Harris done\n");  
+   
+
+    //On envoie dans un dossier
+    memset (dest, 0, sizeof (dest));
+    strcat(dest,pathfinal);
+    strcat(dest,"Harris");
+    strcat(dest,num);
+    strcat(dest,".pgm");    
+    printf("dossier = %s\n",dest);
+    SavePGM_bmatrix(matrice_harris,nrl,nrh,ncl,nch,dest);
+    }
+}
+
+//Fonction permettant de faire l'étiquettage ////A faire\\\\
+
+
 
 /**
 * Fonction permettant de faire la différence par rapport à une image de fond
@@ -499,7 +678,8 @@ int main(void){
 
 	//R = ouverture(R,nrl,nrh,ncl,nch,10);
     
-    Exercice6("Sequences/Lbox/ppm/\0","lbox\0","Sequences/Lbox/imgdone-mediane/","Sequences/Lbox/mediane869.pgm");
+    //Exercice6("Sequences/Lbox/ppm/\0","lbox\0","Sequences/Lbox/imgdone-mediane/","Sequences/Lbox/mediane869.pgm");
+    Harris("Sequences/Fomd/ppm/\0","fomd\0","Sequences/Fomd/imgdone-harris/","Sequences/Fomd/ppm/fomd001.ppm",10);
     //Exercice5_b("Sequences/Fomd/ppm/\0","fomd\0","Sequences/Fomd/","Sequences/Fomd/ppm/fomd001.ppm");
     
 	//SavePGM_bmatrix(R,nrl,nrh,ncl,nch,"imgdone/test.pgm");
@@ -508,9 +688,6 @@ int main(void){
 	//SavePGM_bmatrix(R,nrl,nrh,ncl,nch,"imgdone/carre_bina.pgm");
 	//SavePGM_bmatrix(matrice_temp,nrl,nrh,ncl,nch,"imgdone/carre_bina.pgm");
 	//free_bmatrix(R,nrl,nrh,ncl,nch);
-
-	
-
 	return 0;
 
 }
